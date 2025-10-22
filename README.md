@@ -92,6 +92,9 @@ SALT hex: 3439353237363739
 HASH hex: 30... (long hex)
 ```
 
+<img width="724" height="319" alt="Capture d’écran du 2025-10-22 20-52-01" src="https://github.com/user-attachments/assets/0cbce44f-feff-4b47-b983-f419c24bee1a" />
+
+
 This shows the firmware revealed the correct behavior when a candidate matched.
 
 ---
