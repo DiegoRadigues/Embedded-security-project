@@ -69,7 +69,7 @@ Primary chosen path: **B1 + C1** (strings + serial bruteforce).
 ---
 
 ## 6 — Vulnerability identification and evidence
-**Vulnerability:** The device accepts password attempts over an unprotected serial interface and leaks the salt and hash when a correct password is given. The firmware binary contains many readable strings. Using this information, an attacker can build a wordlist and try the candidates on serial until one succeeds. There is no rate-limiting, authentication, or challenge-response.
+**Vulnerability:** The device accepts password attempts over an unprotected serial interface and leaks the salt and hash when a correct password is given. The firmware binary contains many readable strings. Using this information an attacker can build a wordlist and try the candidates on serial until one succeeds.
 
 **Evidence (from my logs and commands):**
 - I extracted strings from the firmware:
@@ -86,14 +86,7 @@ awk 'length($0) >= 4 && length($0) <= 32 { print $0 }' full_candidates_raw.txt \
 - Prioritized candidates (examples): found tokens like `PASSWORD`, `sha3`, `SHA3_256`, and many other symbols. Built a final cleaned wordlist: `candidates_priority_clean.txt` (382 candidates in my run).
 - Automated tries with a Python script. The script reported:
 
-```
-[47/382] Candidate='f7-@Jp0w' -> trying mode: line ... ACCESS GRANTED === SUCCESS for f7-@Jp0w
-SALT hex: 3439353237363739
-HASH hex: 30... (long hex)
-```
-
 <img width="724" height="319" alt="Capture d’écran du 2025-10-22 20-52-01" src="https://github.com/user-attachments/assets/0cbce44f-feff-4b47-b983-f419c24bee1a" />
-
 
 This shows the firmware revealed the correct behavior when a candidate matched.
 
@@ -291,12 +284,26 @@ I list practical counter-measures ordered from easy to more involved.
 
 ---
 
-## 11 — Alternate/secondary attacks (brief)
-- **Static reverse engineering**: If the ELF is available, disassemble to find where keys are stored and how the check is performed. Could reveal exact location of stored phrase.
-- **Side-channel**: Clock or power glitching, EM leakage or power analysis could be used to bypass checks or extract secrets (requires extra hardware).
-- **Hardware debug**: Using ISP / JTAG / AVR debug interfaces to read flash or EEPROM (only if accessible and not protected by fuses).
+## Alternative method 
 
-I did not use these in the primary attack; they are listed for completeness.
+### access via ISP (not tested)
+
+If the ELF file is not available you can try to read the chip using the ISP interface. ISP can read the **flash** and the **EEPROM** of the ATmega328P microcontroller.
+
+1. Connect an ISP programmer (for example **USBasp**) to the 6-pin **ICSP** header on the board.  
+2. On your computer use `avrdude` to try to read the flash:
+   ```bash
+   avrdude -c usbasp -p m328p -U flash:r:dump_flash.bin:r
+   ```
+3. If the read works, use `strings` and `avr-objdump` on `dump_flash.bin` to find readable text and to inspect the code that checks the password:
+   ```bash
+   strings dump_flash.bin | grep -iE 'pass|salt|sha|ACCESS|grant'
+   avr-objdump -m avr -D dump_flash.bin > dump.s
+   ```
+
+
+
+
 
 ---
 
