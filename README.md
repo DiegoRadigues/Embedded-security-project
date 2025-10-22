@@ -179,12 +179,16 @@ CVSS:4.0/AV:L/AC:L/AT:N/PR:N/UI:N/S:U/VC:H/VI:H/VA:L/SC:N/SI:N/SA:N
 
 ## 8 — Attack description and implementation 
 
-# clone the repository
+### clone the repository
+```bash
 git clone https://github.com/DiegoRadigues/Embedded-security-project.git
 cd Embedded-security-project
+```
 
-# files must be in local folder
+files must be in local folder
+```bash
 ls -l secure_sketch_v20251001.0.elf serial_bruteforce_protocol.py
+```
 
 
 ### 8.1 — Environment setup (host)
