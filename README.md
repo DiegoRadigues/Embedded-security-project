@@ -177,13 +177,20 @@ CVSS:4.0/AV:L/AC:L/AT:N/PR:N/UI:N/S:U/VC:H/VI:H/VA:L/SC:N/SI:N/SA:N
 
 ---
 
-## 8 — Attack description and implementation (step-by-step, reproducible)
-I describe the exact steps and commands to reproduce the attack. Use at your own lab and with permission.
+## 8 — Attack description and implementation 
+
+# clone the repository
+git clone https://github.com/DiegoRadigues/Embedded-security-project.git
+cd Embedded-security-project
+
+# files must be in local folder
+ls -l secure_sketch_v20251001.0.elf serial_bruteforce_protocol.py
+
 
 ### 8.1 — Environment setup (host)
 ```bash
 # create a Python venv
-cd ~
+cd  Embedded-security-project
 python3 -m venv venv
 source venv/bin/activate
 
@@ -192,10 +199,11 @@ pip install pyserial
 ```
 
 ### 8.2 — Extract candidate words from firmware
-Assume firmware file `secure_sketch_v20251001.0.elf` is in `~/Downloads`:
+Assume firmware file `secure_sketch_v20251001.0.elf` is in `~/Embedded-security-project
+`:
 
 ```bash
-cd ~/Downloads
+cd ~/Embedded-security-project
 strings secure_sketch_v20251001.0.elf > full_candidates_raw.txt
 
 # keep strings length 4..32, trim CR, remove duplicates
@@ -232,7 +240,8 @@ Use the script serial_bruteforce_protocol.py. This script:
 
 
 ### 8.4 — Running the attack
-1. Put the cleaned candidate list at `~/Downloads/candidates_priority_clean.txt`.
+1. Put the cleaned candidate list at `~/ Embedded-security-project
+/candidates_priority_clean.txt`.
 2. Make the script executable:
 ```bash
 chmod +x serial_bruteforce_protocol.py
@@ -240,7 +249,7 @@ chmod +x serial_bruteforce_protocol.py
 3. Run the script inside the venv:
 ```bash
 source ~/venv/bin/activate
-python ~/Downloads/serial_bruteforce_protocol.py 2>&1 | tee bruteforce_priority_run.log
+python ~/ Embedded-security-project/serial_bruteforce_protocol.py 2>&1 | tee bruteforce_priority_run.log
 ```
 4. Monitor outputs. When the script prints `=== SUCCESS for <candidate>` it also saved the serial capture file, and it printed salt/hash.
 
