@@ -1,0 +1,299 @@
+# Project write-up
+
+---
+
+## 1 — Abstract
+The goal was to get the secret keyphrase from an Arduino Uno “vault”. The device asks for a password on the serial line. If the password is correct, the device prints the salt and the hash of the secret keyphrase.
+
+I used a **protocol bruteforce** on the serial port. I extracted candidate strings from the firmware binary (`strings`), filtered and prioritized them, then tried each candidate automatically with a Python script that talks to the Arduino. The attack succeeded: one candidate produced `ACCESS GRANTED` and the device printed its salt and hash.
+
+---
+
+## 2 — Deliverables 
+- Salt and hash
+- Full write-up describing hardware, attack tree, vulnerability analysis, attack implementation, scripts and counter-measures.
+
+**Successful output (examples captured during the attack):**
+- Successful candidate: `f7-@Jp0w`
+- SALT (hex): `3439353237363739`
+- SALT (base64): `NDk1Mjc2Nzk=`
+- HASH (hex): `30354637333044423835324344464442303831343041303033313039334631413635383432464641344435303932464535343935373837454130324433454634`
+- HASH (base64): `MDVGNzMwREI4NTJDREZEQjA4MTQwQTAwMzEwOTNGMUE2NTg0MkZGQTRENTA5MkZFNTQ5NTc4N0VBMDJEM0VGNA==`
+
+
+---
+
+## 3 — Hardware and wiring
+**Minimal hardware used**
+- Target: Arduino Uno (ATmega328P).
+- Host computer (Linux)
+- USB TTL adapter HW-193 (CH340G)
+- ChipWhisperer-Nano or logic analyzer (not required for this primary attack).
+
+**Simple wiring / connections**
+- Connect Arduino to the TTL Device on pin 10, 11. RX, TX.
+- The host opens `/dev/ttyUSB0` (or `/dev/ttyACM0`) for serial.
+
+<img width="1372" height="642" alt="schematic" src="https://github.com/user-attachments/assets/6f60e051-5966-4ed9-b2c7-8dc9c909b0aa" />
+
+
+---
+
+## 4 — Asset description
+**Assets (what we want to protect / what is sensitive):**
+- **Secret keyphrase** stored inside Arduino firmware or memory.
+- **Salt and resulting hash** printed only after correct password.
+- **Serial interface** — a local access interface that accepts password input.
+
+**Attacker model:** The attacker has local physical access to connect to the board via USB and can send serial data. The attacker can read the firmware file (provided in the exercise), run `strings` on it, and run scripts on a PC.
+
+---
+
+## 5 — Attack tree (textual)
+Top goal: **Extract the secret keyphrase (hash or salt)**
+- Node A: Remote attacks (not applicable — no network)
+- Node B: Local protocol attacks (serial)
+  - B1: Brute-force password via serial (works)
+    - B1.1: Extract candidate list from firmware (`strings`) → prioritized list
+    - B1.2: Automated script to send each candidate and detect success markers
+  - B2: Protocol manipulation (replay / format) — not needed
+- Node C: Firmware analysis (static)
+  - C1: Read firmware symbols and strings → find likely candidates
+  - C2: Reverse engineer hash/salt code (optional)
+- Node D: Physical / side-channel
+  - D1: Clock/voltage glitching (not used)
+  - D2: EM / power analysis (not used)
+
+Primary chosen path: **B1 + C1** (strings + serial bruteforce).
+
+---
+
+## 6 — Vulnerability identification and evidence
+**Vulnerability:** The device accepts password attempts over an unprotected serial interface and leaks the salt and hash when a correct password is given. The firmware binary contains many readable strings. Using this information, an attacker can build a wordlist and try the candidates on serial until one succeeds. There is no rate-limiting, authentication, or challenge-response.
+
+**Evidence (from my logs and commands):**
+- I extracted strings from the firmware:
+
+```bash
+strings secure_sketch_v20251001.0.elf > full_candidates_raw.txt
+# filter by length 4..32 and remove CR:
+awk 'length($0) >= 4 && length($0) <= 32 { print $0 }' full_candidates_raw.txt \
+  | tr -d '\r' \
+  | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' \
+  | sort -u > full_candidates.txt
+```
+
+- Prioritized candidates (examples): found tokens like `PASSWORD`, `sha3`, `SHA3_256`, and many other symbols. Built a final cleaned wordlist: `candidates_priority_clean.txt` (382 candidates in my run).
+- Automated tries with a Python script. The script reported:
+
+```
+[47/382] Candidate='f7-@Jp0w' -> trying mode: line ... ACCESS GRANTED === SUCCESS for f7-@Jp0w
+SALT hex: 3439353237363739
+HASH hex: 30... (long hex)
+```
+
+This shows the firmware revealed the correct behavior when a candidate matched.
+
+---
+
+## 7 — Vulnerability severity assessment 
+
+**Source:** [NVD CVSS v4.0 Calculator](https://nvd.nist.gov/vuln-metrics/cvss/v4-calculator)
+
+**Final Score:** **7.2 (High)**
+
+---
+
+### 1. CVSS v4.0 Vector
+```
+CVSS:4.0/AV:L/AC:L/AT:N/PR:N/UI:N/S:U/VC:H/VI:H/VA:L/SC:N/SI:N/SA:N
+```
+
+**Base Score:** 7.2 — High  
+
+---
+
+### 2. Metric Justifications
+
+### Exploitability Metrics
+| Metric | Value | Justification |
+|--------|--------|---------------|
+| **Attack Vector (AV)** | Local (L) | The attacker must have local or physical access to the USB/serial port. No network connection is available. |
+| **Attack Complexity (AC)** | Low (L) | The attack is simple and reliable; a Python script can automatically test candidate passwords. |
+| **Attack Requirements (AT)** | None (N) | No preconditions or setup are required beyond serial access. |
+| **Privileges Required (PR)** | None (N) | Any local user with physical access can send commands. No prior privileges are needed. |
+| **User Interaction (UI)** | None (N) | The attack requires no legitimate user participation. |
+
+#### Vulnerable System Impact Metrics
+| Metric | Value | Justification |
+|--------|--------|---------------|
+| **Confidentiality (VC)** | High (H) | Sensitive cryptographic data (salt + hash) is revealed, compromising the secret. |
+| **Integrity (VI)** | High (H) | Disclosure of secret material enables impersonation or forged operations. |
+| **Availability (VA)** | Low (L) | The device remains operational after the attack; minimal impact on availability. |
+
+#### Subsequent System Impact Metrics
+| Metric | Value | Justification |
+|--------|--------|---------------|
+| **Confidentiality (SC)** | None (N) | Leakage does not propagate to other systems. |
+| **Integrity (SI)** | None (N) | No broader impact on other systems. |
+| **Availability (SA)** | None (N) | No wider service degradation. |
+
+---
+
+### 3. Supplemental Metrics
+| Metric | Value | Justification |
+|--------|--------|---------------|
+| **Safety (S)** | Not Defined (X) | No physical or human safety risk. |
+| **Automatable (AU)** | Not Defined (X) | Although easily scriptable, automation impact not assessed. |
+| **Recovery (R)** | Not Defined (X) | The system can be restored easily (firmware reflash). |
+| **Value Density (V)** | Not Defined (X) | Low-density asset: a single secret keyphrase. |
+| **Vulnerability Response Effort (RE)** | Not Defined (X) | No vendor patch officially available. |
+| **Provider Urgency (U)** | Not Defined (X) | No vendor advisory issued. |
+
+---
+
+### 4. Environmental (Modified Base Metrics)
+| Metric | Value | Justification |
+|--------|--------|---------------|
+| **MAV / MAC / MAT / MPR / MUI** | Not Defined (X) | Attack conditions same as base metrics. |
+| **MVC (Confidentiality)** | High (H) | Secret data is critical. |
+| **MVI (Integrity)** | High (H) | Manipulation of results would severely affect trust. |
+| **MVA (Availability)** | High (H) | Availability is important but not vital. |
+| **MSC / MSI** | Not Defined (X) | No extended effect beyond the device. |
+| **MSA (Availability)** | Low (L) | Only slight operational disruption during brute-force. |
+
+---
+
+### 5. Environmental Security Requirements
+| Metric | Value | Justification |
+|--------|--------|---------------|
+| **Confidentiality Requirement (CR)** | High (H) | The keyphrase is highly sensitive and should remain secret. |
+| **Integrity Requirement (IR)** | High (H) | Device integrity relies on secret protection. |
+| **Availability Requirement (AR)** | Low (L) | Temporary unavailability is acceptable. |
+
+---
+
+### 6. Threat Metrics
+| Metric | Value | Justification |
+|--------|--------|---------------|
+| **Exploit Maturity (E)** | Proof-of-Concept (POC) | A working exploit (Python script) demonstrates the vulnerability in practice. |
+
+
+---
+
+## 8 — Attack description and implementation (step-by-step, reproducible)
+I describe the exact steps and commands to reproduce the attack. Use at your own lab and with permission.
+
+### 8.1 — Environment setup (host)
+```bash
+# create a Python venv
+cd ~
+python3 -m venv venv
+source venv/bin/activate
+
+# install pyserial if not present
+pip install pyserial
+```
+
+### 8.2 — Extract candidate words from firmware
+Assume firmware file `secure_sketch_v20251001.0.elf` is in `~/Downloads`:
+
+```bash
+cd ~/Downloads
+strings secure_sketch_v20251001.0.elf > full_candidates_raw.txt
+
+# keep strings length 4..32, trim CR, remove duplicates
+awk 'length($0) >= 4 && length($0) <= 32 { print $0 }' full_candidates_raw.txt \
+  | tr -d '\r' \
+  | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' \
+  | sort -u > full_candidates.txt
+
+# build priority lists (examples used in my workflow)
+grep -P '[A-Za-z]' full_candidates.txt | grep -P '[0-9\W]' | sort -u > priority_A.txt
+grep -E '^[A-Za-z]{4,12}$' full_candidates.txt | sort -u > priority_B.txt
+printf "%s\n" "PASSWORD" "sha3" "SHA3_256" | grep -Fxf - full_candidates.txt > priority_C.txt || true
+
+# combine ordered priority lists
+cat priority_C.txt priority_A.txt priority_B.txt > candidates_priority.txt
+
+# clean obviously irrelevant tokens (files, .c, symbols)
+grep -vE '^/|\\.c$|\\.o$|__|vector_|\\.part\\.|\\.o$|\\.S$' candidates_priority.txt > candidates_priority_clean.txt
+
+# check number of candidates
+wc -l candidates_priority_clean.txt
+# example result: 382
+```
+
+### 8.3 — Python bruteforce script
+Use the script serial_bruteforce_protocol.py. This script:
+- opens the serial port,
+- optionally toggles DTR to reset the Arduino before each try,
+- waits for a password prompt,
+- sends candidate either char-by-char (small delay between characters) or as a line,
+- checks serial output for success markers,
+- saves the serial capture of each try.
+
+
+
+### 8.4 — Running the attack
+1. Put the cleaned candidate list at `~/Downloads/candidates_priority_clean.txt`.
+2. Make the script executable:
+```bash
+chmod +x serial_bruteforce_protocol.py
+```
+3. Run the script inside the venv:
+```bash
+source ~/venv/bin/activate
+python ~/Downloads/serial_bruteforce_protocol.py 2>&1 | tee bruteforce_priority_run.log
+```
+4. Monitor outputs. When the script prints `=== SUCCESS for <candidate>` it also saved the serial capture file, and it printed salt/hash.
+
+**Notes about behavior**:
+- The script tries two modes: char-by-char (useful if firmware reads char-by-char) and line mode.
+- The script toggles DTR to reset the Arduino between tries to keep the device in a known prompt state.
+- The script waits for typical prompts such as `Enter password:` to avoid sending data in wrong states.
+
+---
+
+## 9 — Why this attack works (root cause)
+- The firmware exposes readable strings (password-like tokens) when the ELF is available. This gives an attacker a much shorter search space than brute-forcing all random passwords.
+- The serial interface is unauthenticated and does not limit the number of attempts / has no throttle.
+- The device prints salt and hash directly on success, leaking cryptographic material even if the keyphrase itself is not printed.
+- There is no firmware signing or secure element preventing extraction or reuse.
+
+---
+
+## 10 — Proposed counter-measures (defensive recommendations)
+I list practical counter-measures ordered from easy to more involved.
+
+### 10.1 — Easy 
+1. **Remove readable strings**: Compile with linker flags to strip symbols and strings where possible. Use `-s` to strip symbol table and consider obfuscating non-critical strings.
+2. **Remove debug messages**: Ensure success messages do not dump salt/hash on serial. Replace with a simple `OK` code with no secret.
+3. **Require challenge-response**: Do not print salt/hash on success. Instead, require a second physical token or challenge to reveal sensitive data.
+4. **Rate-limit attempts**: Implement an attempt counter and lockout or exponential backoff after N failed attempts.
+5. **Change default firmware behavior**: Only accept password input after a configuration mode or when a physical button is pressed.
+
+### 10.2 — Medium
+1. **Authentication over serial**: Implement a secure protocol (e.g., HMAC-based challenge-response). Never accept a raw password on an open serial port without a challenge.
+2. **Use non-guessable password**: Use longer, random secrets not present in firmware strings or binary.
+3. **Limit debug artifacts in firmware**: Compile-time removal of debug strings, and use localized and encrypted strings if needed.
+4. **Disable bootloader or restrict USB access**: If possible, configure the board so normal USB serial is disabled for production devices.
+
+### 10.3 — Hard
+1. **Store secrets in secure element** (e.g., ATECC, secure microcontroller) that prevents read-out and performs cryptographic operations inside the secure chip.
+2. **Firmware signing and secure boot**: Bootloader verifies firmware signature; avoid running arbitrary unverified code.
+3. **Tamper detection / physical protections**: prevent easy access to serial connectors, or require physical unlock procedure.
+
+**Effectiveness:** Combining stripping of strings, removing debug printing of secret material (salt/hash), and implementing lockout/rate-limit will already mitigate this specific attack. For higher-security use-cases, adopt secure element + signed firmware.
+
+---
+
+## 11 — Alternate/secondary attacks (brief)
+- **Static reverse engineering**: If the ELF is available, disassemble to find where keys are stored and how the check is performed. Could reveal exact location of stored phrase.
+- **Side-channel**: Clock or power glitching, EM leakage or power analysis could be used to bypass checks or extract secrets (requires extra hardware).
+- **Hardware debug**: Using ISP / JTAG / AVR debug interfaces to read flash or EEPROM (only if accessible and not protected by fuses).
+
+I did not use these in the primary attack; they are listed for completeness.
+
+---
+
