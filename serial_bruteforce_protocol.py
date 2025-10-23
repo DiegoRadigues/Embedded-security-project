@@ -10,14 +10,14 @@ import serial, time, os, sys, binascii, base64
 
 # ---------- CONFIG ----------
 PORT = "/dev/ttyUSB0"
-BAUD = 9600                # adapte à 115200 si besoin
+BAUD = 9600                
 WORDLIST = os.path.expanduser("~/Téléchargements/candidates_f.txt")
 OUTDIR = os.path.expanduser("~/Téléchargements/bruteforce_protocol_tries")
-CHAR_DELAY = 0.06          # délai entre caractères en mode char
-READ_WAIT = 2.0            # lecture après envoi
+CHAR_DELAY = 0.06          
+READ_WAIT = 2.0            
 INTER_TRY_DELAY = 0.2
-RESET_BEFORE_TRY = True    # toggle DTR reset avant chaque essai
-WAIT_FOR_PROMPT = True     # attendre un prompt avant d'envoyer
+RESET_BEFORE_TRY = True    
+WAIT_FOR_PROMPT = True     
 PROMPTS = [b"Enter password:", b"Character from password:", b"No input. Enter password:"]
 SUCCESS_MARKERS = [b"ACCESS GRANTED", b"Here is your salt:", b"Here is your hash:"]
 IGNORE_MARKERS = [b"ACCESS DENIED"]
