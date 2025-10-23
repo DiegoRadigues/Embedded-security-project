@@ -1,18 +1,12 @@
 #!/usr/bin/env python3
-"""
-Bruteforce interactif amélioré :
-- attend le prompt avant d'envoyer
-- peut reset la carte via DTR avant chaque essai
-- essaye deux modes d'envoi (char-by-char puis line) si nécessaire
-- n'arrête que sur ACCESS GRANTED ou labels 'Here is your salt:'/'Here is your hash:'
-"""
+
 import serial, time, os, sys, binascii, base64
 
 # ---------- CONFIG ----------
 PORT = "/dev/ttyUSB0"
 BAUD = 9600                
-WORDLIST = os.path.expanduser("~/Téléchargements/candidates_f.txt")
-OUTDIR = os.path.expanduser("~/Téléchargements/bruteforce_protocol_tries")
+WORDLIST = os.path.expanduser("~/Embedded-security-project/candidates_f.txt")
+OUTDIR = os.path.expanduser("~/Embedded-security-project/bruteforce_protocol_tries")
 CHAR_DELAY = 0.06          
 READ_WAIT = 2.0            
 INTER_TRY_DELAY = 0.2
