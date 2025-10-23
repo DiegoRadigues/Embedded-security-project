@@ -250,29 +250,56 @@ python ~/ Embedded-security-project/serial_bruteforce_protocol.py 2>&1 | tee bru
 - The script waits for typical prompts such as `Enter password:` to avoid sending data in wrong states.
 
 ---
+# 9 — Countermeasures
+## 9.1 — very_secure_sketch_v20251001.0.elf
 
-## 9 — Proposed counter-measures (defensive recommendations)
-I list practical counter-measures ordered from easy to more involved.
+- The password is **not stored in clear** in the firmware.
+- Instead, the code stores a **SHA3‑256 hash** of the password.
+- The hash is **XOR‑obfuscated** so it does not appear as readable text.
 
-### 9.1 — Easy 
-1. **Remove readable strings**: Compile with linker flags to strip symbols and strings where possible. Use `-s` to strip symbol table and consider obfuscating non-critical strings.
-2. **Remove debug messages**: Ensure success messages do not dump salt/hash on serial. Replace with a simple `OK` code with no secret.
-3. **Require challenge-response**: Do not print salt/hash on success. Instead, require a second physical token or challenge to reveal sensitive data.
-4. **Rate-limit attempts**: Implement an attempt counter and lockout or exponential backoff after N failed attempts.
-5. **Change default firmware behavior**: Only accept password input after a configuration mode or when a physical button is pressed.
 
-### 9.2 — Medium
-1. **Authentication over serial**: Implement a secure protocol (e.g., HMAC-based challenge-response). Never accept a raw password on an open serial port without a challenge.
-2. **Use non-guessable password**: Use longer, random secrets not present in firmware strings or binary.
-3. **Limit debug artifacts in firmware**: Compile-time removal of debug strings, and use localized and encrypted strings if needed.
-4. **Disable bootloader or restrict USB access**: If possible, configure the board so normal USB serial is disabled for production devices.
+**Remaining weaknesses:**
+- The hash is still in flash memory → a motivated attacker can read it.
+- Serial is still open → an attacker can still try brute‑force.
 
-### 9.3 — Hard
-1. **Store secrets in secure element** (e.g., ATECC, secure microcontroller) that prevents read-out and performs cryptographic operations inside the secure chip.
-2. **Firmware signing and secure boot**: Bootloader verifies firmware signature; avoid running arbitrary unverified code.
-3. **Tamper detection / physical protections**: prevent easy access to serial connectors, or require physical unlock procedure.
+---
 
-**Effectiveness:** Combining stripping of strings, removing debug printing of secret material (salt/hash), and implementing lockout/rate-limit will already mitigate this specific attack. For higher-security use-cases, adopt secure element + signed firmware.
+## 9.2 — Delay against brute‑force
+
+To slow down brute‑force attacks we can add a **delay after each wrong attempt**.
+
+After many fails, the attacker must wait an exponential long time.
+This makes brute‑force very slow.
+
+**Store fail counter in EEPROM** → reset button does not reset delay.
+
+---
+
+## 9.3 — Force hardware interaction
+
+If there are **too many failed attempts**, the system can lock:
+
+- User must press a **physical button** to unlock the system.
+- Or unplug power and press button during start.
+
+This means an attacker **must be physically present** or implement a hardware system to automatize.
+
+---
+
+## 9.4 — Multiple passwords 
+
+We can ask:
+ Password 1
+ Password 2
+ Password 3
+
+The attacker must guess **all passwords in the correct order**.
+
+Example with 382 possible candidates:
+- 2 passwords → 382² = 145,924 combinations
+- 3 passwords → 382³ = 55,742,968 combinations
+
+Combined with a delay at each try
 
 ---
 
