@@ -49,22 +49,9 @@ I used a **protocol bruteforce** on the serial port. I extracted candidate strin
 
 ---
 
-## 5 — Attack tree (textual)
-Top goal: **Extract the secret keyphrase (hash or salt)**
-- Node A: Remote attacks (not applicable — no network)
-- Node B: Local protocol attacks (serial)
-  - B1: Brute-force password via serial (works)
-    - B1.1: Extract candidate list from firmware (`strings`) → prioritized list
-    - B1.2: Automated script to send each candidate and detect success markers
-  - B2: Protocol manipulation (replay / format) — not needed
-- Node C: Firmware analysis (static)
-  - C1: Read firmware symbols and strings → find likely candidates
-  - C2: Reverse engineer hash/salt code (optional)
-- Node D: Physical / side-channel
-  - D1: Clock/voltage glitching (not used)
-  - D2: EM / power analysis (not used)
+## 5 — Attack tree
+<img width="1066" height="1062" alt="attack tree" src="https://github.com/user-attachments/assets/f600ccc5-4d58-4d25-b3b9-a99b03b6d66d" />
 
-Primary chosen path: **B1 + C1** (strings + serial bruteforce).
 
 ---
 
