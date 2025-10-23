@@ -251,31 +251,23 @@ python ~/ Embedded-security-project/serial_bruteforce_protocol.py 2>&1 | tee bru
 
 ---
 
-## 9 — Why this attack works (root cause)
-- The firmware exposes readable strings (password-like tokens) when the ELF is available. This gives an attacker a much shorter search space than brute-forcing all random passwords.
-- The serial interface is unauthenticated and does not limit the number of attempts / has no throttle.
-- The device prints salt and hash directly on success, leaking cryptographic material even if the keyphrase itself is not printed.
-- There is no firmware signing or secure element preventing extraction or reuse.
-
----
-
-## 10 — Proposed counter-measures (defensive recommendations)
+## 9 — Proposed counter-measures (defensive recommendations)
 I list practical counter-measures ordered from easy to more involved.
 
-### 10.1 — Easy 
+### 9.1 — Easy 
 1. **Remove readable strings**: Compile with linker flags to strip symbols and strings where possible. Use `-s` to strip symbol table and consider obfuscating non-critical strings.
 2. **Remove debug messages**: Ensure success messages do not dump salt/hash on serial. Replace with a simple `OK` code with no secret.
 3. **Require challenge-response**: Do not print salt/hash on success. Instead, require a second physical token or challenge to reveal sensitive data.
 4. **Rate-limit attempts**: Implement an attempt counter and lockout or exponential backoff after N failed attempts.
 5. **Change default firmware behavior**: Only accept password input after a configuration mode or when a physical button is pressed.
 
-### 10.2 — Medium
+### 9.2 — Medium
 1. **Authentication over serial**: Implement a secure protocol (e.g., HMAC-based challenge-response). Never accept a raw password on an open serial port without a challenge.
 2. **Use non-guessable password**: Use longer, random secrets not present in firmware strings or binary.
 3. **Limit debug artifacts in firmware**: Compile-time removal of debug strings, and use localized and encrypted strings if needed.
 4. **Disable bootloader or restrict USB access**: If possible, configure the board so normal USB serial is disabled for production devices.
 
-### 10.3 — Hard
+### 9.3 — Hard
 1. **Store secrets in secure element** (e.g., ATECC, secure microcontroller) that prevents read-out and performs cryptographic operations inside the secure chip.
 2. **Firmware signing and secure boot**: Bootloader verifies firmware signature; avoid running arbitrary unverified code.
 3. **Tamper detection / physical protections**: prevent easy access to serial connectors, or require physical unlock procedure.
@@ -284,7 +276,7 @@ I list practical counter-measures ordered from easy to more involved.
 
 ---
 
-## Alternative method 
+## 10 Alternative method 
 
 ### access via ISP (not tested)
 
