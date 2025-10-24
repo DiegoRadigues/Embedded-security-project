@@ -251,9 +251,10 @@ python ~/Embedded-security-project/serial_bruteforce_protocol.py 2>&1 | tee brut
 
 ---
 # 9 — Countermeasures
-## 9.1 — 
 
-i tested a more secure version of the firmware [very_secure_sketch_v20251001.0.elf](https://github.com/DiegoRadigues/Embedded-security-project/blob/main/very_secure_sketch_v20251001.0.elf)
+## 9.1 — Hash & obfuscation
+
+I have tested a more secure version of the firmware [very_secure_sketch_v20251001.0.elf](https://github.com/DiegoRadigues/Embedded-security-project/blob/main/very_secure_sketch_v20251001.0.elf)
 
 - The password is **not stored in clear** in the firmware.
 - Instead, the code stores a **SHA3‑256 hash** of the password.
