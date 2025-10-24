@@ -240,7 +240,7 @@ chmod +x serial_bruteforce_protocol.py
 3. Run the script inside the venv:
 ```bash
 source ~/venv/bin/activate
-python ~/ Embedded-security-project/serial_bruteforce_protocol.py 2>&1 | tee bruteforce_priority_run.log
+python ~/Embedded-security-project/serial_bruteforce_protocol.py 2>&1 | tee bruteforce_priority_run.log
 ```
 4. Monitor outputs. When the script prints `=== SUCCESS for <candidate>` it also saved the serial capture file, and it printed salt/hash.
 
@@ -301,6 +301,10 @@ Example with 382 possible candidates:
 
 Combined with a delay at each try
 
+## 9.4 decoy password
+
+Add several decoy passwords whose purpose is to offer better-looking targets for the kinds of attacks we expect. For example, include a decoy that intentionally returns a much longer response time to fool a timing attack, or a decoy that performs extra, complex computations to change the power signature and mislead power analysis. When the device detects that a decoy was used, it can lock itself and require stronger authentication (longer passwords, second factor or multiple passwords), or it can simply return believable but fake data instead of the real secret. If the device is networked it can also report the intrusion attempt and upload its logs to a secure server. The idea is to exploit the predictability of an attack so the attacker falls into the trap and effectively announces themself as an attacker. In the case I used, if I had found decoy strings inside the ELF and classified them as possible passwords I would obviously have fallen into the trap. Make sure the decoys are very different from the real password so legitimate users don’t lock themselves out after a normal typo mistake.
+
 ---
 
 ## 10 Alternative method 
@@ -318,6 +322,18 @@ If the ELF file is not available you can try to read the chip using the ISP inte
    ```bash
    strings dump_flash.bin | grep -iE 'pass|salt|sha|ACCESS|grant'
    avr-objdump -m avr -D dump_flash.bin > dump.s
+
+
+### Timing analysis
+Timing analysis looks at how long the device takes to do things. If a password check or a comparison takes a little longer for some inputs than others you can sometimes guess parts of the secret by measuring response times and comparing many tries. Defenses are : make the code run in constant time or add random delays so timing no longer leaks information.
+
+### Power analysis
+Power analysis studies the device’s power consumption while it runs. The idea is that different operations or data values cause slightly different current draws. With a single clear pattern you might get something from Simple Power Analysis (SPA); with many traces and statistics you can do Differential Power Analysis (DPA) and recover secret bits. Countermeasures include masking/blinding (so intermediate values are randomized), adding noise, and hardware measures that hide the power signature.
+
+### Supply glitch
+Glitching means briefly disturbing the power or clock to make the microcontroller misbehave (skip instructions, corrupt a comparison, etc.). If timed right, a glitch can bypass the check or force the device into a state that leaks info. Protections include detecting supply anomalies, redundant checks (check password many times before giving access).
+
+
    ```
 
 
