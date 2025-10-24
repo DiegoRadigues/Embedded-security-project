@@ -34,7 +34,10 @@ I used a **protocol bruteforce** on the serial port. I extracted candidate strin
 - Connect Arduino to the TTL Device on pin 10, 11. RX, TX.
 - The host opens `/dev/ttyUSB0` (or `/dev/ttyACM0`) for serial.
 
-<img width="1372" height="642" alt="schematic" src="https://github.com/user-attachments/assets/6f60e051-5966-4ed9-b2c7-8dc9c909b0aa" />
+![Figure 1 — Simple wiring between Arduino Uno and USB-TTL adapter](https://github.com/user-attachments/assets/6f60e051-5966-4ed9-b2c7-8dc9c909b0aa)
+
+*Figure 1 — Simple wiring between the Arduino Uno and the USB-TTL adapter (RX/TX). This setup allows direct serial communication for password attempts.*
+
 
 
 ---
@@ -50,7 +53,10 @@ I used a **protocol bruteforce** on the serial port. I extracted candidate strin
 ---
 
 ## 5 — Attack tree
-<img width="1066" height="1062" alt="attack tree" src="https://github.com/user-attachments/assets/f600ccc5-4d58-4d25-b3b9-a99b03b6d66d" />
+![Figure 2 — Attack tree showing different strategies to obtain the secret keyphrase](https://github.com/user-attachments/assets/f600ccc5-4d58-4d25-b3b9-a99b03b6d66d)
+
+*Figure 2 — Attack tree.*
+
 
 
 ---
@@ -72,8 +78,9 @@ awk 'length($0) >= 4 && length($0) <= 32 { print $0 }' full_candidates_raw.txt \
 
 - Prioritized candidates (examples): found tokens like `PASSWORD`, `sha3`, `SHA3_256`, and many other symbols. Built a final cleaned wordlist: `candidates_priority_clean.txt` (382 candidates in my run).
 - Automated tries with a Python script. The script reported:
+- ![Figure 3 — Serial injection automation with Python script](https://github.com/user-attachments/assets/0cbce44f-feff-4b47-b983-f419c24bee1a)
 
-<img width="724" height="319" alt="Capture d’écran du 2025-10-22 20-52-01" src="https://github.com/user-attachments/assets/0cbce44f-feff-4b47-b983-f419c24bee1a" />
+*Figure 3 — Output from the Python brute-force script. When the correct candidate is tested, the device prints `ACCESS GRANTED` along with the salt and hash.*
 
 This shows the firmware revealed the correct behavior when a candidate matched.
 
@@ -333,11 +340,17 @@ Timing analysis looks at how long the device takes to do things. If a password c
 ### Power analysis
 Power analysis studies the device’s power consumption while it runs. The idea is that different operations or data values cause slightly different current draws. With a single clear pattern you might get something from Simple Power Analysis (SPA); with many traces and statistics you can do Differential Power Analysis (DPA) and recover secret bits. Countermeasures include masking/blinding (so intermediate values are randomized), adding noise, and hardware measures that hide the power signature.
 
+![Power measurement module assembled](https://github.com/user-attachments/assets/c4a94461-9435-4618-adb9-b0d496cb641d)
+
+*Figure 4 — Power-supply / measurement module assembled to feed the Arduino and capture basic power traces.*
+  
+As shown in Figure 4, I assembled a simple power-supply/measurement module to feed the Arduino and verify that power traces were observable. I used this setup to confirm the board could be powered and that current waveforms could be recorded but I did not have time to fully configure the ChipWhisperer hardware and software, therefore I did not pursue the full power-analysis path further.
+
+
+
+
 ### Supply glitch
 Glitching means briefly disturbing the power or clock to make the microcontroller misbehave (skip instructions, corrupt a comparison, etc.). If timed right, a glitch can bypass the check or force the device into a state that leaks info. Protections include detecting supply anomalies, redundant checks (check password many times before giving access).
-
-
-   ```
 
 
 
