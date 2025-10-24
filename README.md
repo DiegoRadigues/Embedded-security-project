@@ -45,7 +45,7 @@ I used a **protocol bruteforce** on the serial port. I extracted candidate strin
 - **Salt and resulting hash** printed only after correct password.
 - **Serial interface** — a local access interface that accepts password input.
 
-**Attacker model:** The attacker has local physical access to connect to the board via USB and can send serial data. The attacker can read the firmware file (provided in the exercise), run `strings` on it, and run scripts on a PC.
+**Attacker model:** The attacker has local physical access to connect to the board via USB and UART and can send serial data. The attacker can read the firmware file (provided in the exercise), run `strings` on it, and run scripts on a PC.
 
 ---
 
@@ -56,7 +56,7 @@ I used a **protocol bruteforce** on the serial port. I extracted candidate strin
 ---
 
 ## 6 — Vulnerability identification and evidence
-**Vulnerability:** The device accepts password attempts over an unprotected serial interface and leaks the salt and hash when a correct password is given. The firmware binary contains many readable strings. Using this information an attacker can build a wordlist and try the candidates on serial until one succeeds.
+**Vulnerability:** The device accepts password attempts over an unprotected UART interface and leaks the salt and hash when a correct password is given. The firmware binary contains many readable strings. Using this information an attacker can build a wordlist and try the candidates until one succeeds.
 
 **Evidence (from my logs and commands):**
 - I extracted strings from the firmware:
@@ -169,7 +169,7 @@ CVSS:4.0/AV:L/AC:L/AT:N/PR:N/UI:N/S:U/VC:H/VI:H/VA:L/SC:N/SI:N/SA:N
 ### clone the repository
 ```bash
 git clone https://github.com/DiegoRadigues/Embedded-security-project.git
-cd Embedded-security-project
+cd ~/Embedded-security-project
 ```
 
 files must be in local folder
@@ -181,7 +181,7 @@ ls -l secure_sketch_v20251001.0.elf serial_bruteforce_protocol.py
 ### 8.1 — Environment setup (host)
 ```bash
 # create a Python venv
-cd  Embedded-security-project
+cd ~/Embedded-security-project
 python3 -m venv venv
 source venv/bin/activate
 
@@ -220,7 +220,7 @@ wc -l candidates_priority_clean.txt
 ```
 
 ### 8.3 — Python bruteforce script
-Use the script serial_bruteforce_protocol.py. This script:
+Use the script [serial_bruteforce_protocol.py](https://github.com/DiegoRadigues/Embedded-security-project/blob/main/serial_bruteforce_protocol.py). This script:
 - opens the serial port,
 - optionally toggles DTR to reset the Arduino before each try,
 - waits for a password prompt,
@@ -231,7 +231,7 @@ Use the script serial_bruteforce_protocol.py. This script:
 
 
 ### 8.4 — Running the attack
-1. Put the cleaned candidate list at `~/ Embedded-security-project
+1. Put the cleaned candidate list at `~/Embedded-security-project
 /candidates_priority_clean.txt`.
 2. Make the script executable:
 ```bash
@@ -251,7 +251,9 @@ python ~/Embedded-security-project/serial_bruteforce_protocol.py 2>&1 | tee brut
 
 ---
 # 9 — Countermeasures
-## 9.1 — very_secure_sketch_v20251001.0.elf
+## 9.1 — 
+
+i tested a more secure version of the firmware [very_secure_sketch_v20251001.0.elf](https://github.com/DiegoRadigues/Embedded-security-project/blob/main/very_secure_sketch_v20251001.0.elf)
 
 - The password is **not stored in clear** in the firmware.
 - Instead, the code stores a **SHA3‑256 hash** of the password.
@@ -340,5 +342,4 @@ Glitching means briefly disturbing the power or clock to make the microcontrolle
 
 
 
----
 
